@@ -28,14 +28,15 @@ mcImage:
   tag: RELEASE.2022-09-16T09-16-47Z
   pullPolicy: IfNotPresent
 
-## minio mode, i.e. standalone or distributed or gateway.
-mode: distributed ## other supported values are "standalone", "gateway"
+## minio mode == `gateway`
+mode: gateway
 
 ## Additional labels to include with deployment or statefulset
 additionalLabels: {}
 
 ## Additional annotations to include with deployment or statefulset
 additionalAnnotations: {}
+  # sidecar.istio.io/inject: "false"
 
 ## Typically the deployment/statefulset includes checksums of secrets/config,
 ## So that when these change on a subsequent helm install, the deployment/statefulset
@@ -114,14 +115,17 @@ bucketRoot: ""
 # Number of drives attached to a node
 drivesPerNode: 1
 # Number of MinIO containers running
-replicas: 16
+replicas: 1
 # Number of expanded MinIO clusters
 pools: 1
 
 # Deploy if 'mode == gateway' - 4 replicas.
+# NOTE: not able to login with 4 replicas; but works with only 1.. 4 is not needed for now..
 gateway:
-  type: "nas" # currently only "nas" are supported.
-  replicas: 4
+  type: "s3"
+  replicas: 1
+
+s3EndpointURL: ''  # point to FQDN of a k8s service "http://<service>.<namespace>.svc.cluster.local:<exposed_port>"
 
 ## TLS Settings for MinIO
 tls:
@@ -141,7 +145,7 @@ trustedCertsSecret: ""
 ## ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
 ##
 persistence:
-  enabled: true
+  enabled: false
   annotations: {}
 
   ## A manually managed Persistent Volume and Claim
@@ -161,7 +165,7 @@ persistence:
   storageClass: ""
   VolumeName: ""
   accessMode: ReadWriteOnce
-  size: 500Gi
+  size: 1Gi
 
   ## If subPath is set mount a sub folder of a volume instead of the root of the volume.
   ## This is especially handy for volume plugins that don't natively support sub mounting (like glusterfs).
@@ -173,10 +177,10 @@ persistence:
 ## ref: http://kubernetes.io/docs/user-guide/services/
 ##
 service:
-  type: ClusterIP
+  type: NodePort
   clusterIP: ~
   port: "9000"
-  nodePort: 32000
+  nodePort: 32090
 
 ## Configure Ingress based on the documentation here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ##
@@ -204,10 +208,10 @@ ingress:
   #      - chart-example.local
 
 consoleService:
-  type: ClusterIP
+  type: NodePort
   clusterIP: ~
   port: "9001"
-  nodePort: 32001
+  nodePort: 32091
 
 consoleIngress:
   enabled: false
@@ -388,14 +392,14 @@ buckets:
   #   # bucket [true|false]
   #   versioning: false
   #   # set objectlocking for
-  #   # bucket [true|false] NOTE: versioning is enabled by default if you use locking 
+  #   # bucket [true|false] NOTE: versioning is enabled by default if you use locking
   #   objectlocking: false
   # - name: bucket2
   #   policy: none
   #   purge: false
   #   versioning: true
   #   # set objectlocking for
-  #   # bucket [true|false] NOTE: versioning is enabled by default if you use locking 
+  #   # bucket [true|false] NOTE: versioning is enabled by default if you use locking
   #   objectlocking: false
 
 ## Additional Annotations for the Kubernetes Job makeBucketJob
@@ -417,7 +421,7 @@ makeBucketJob:
   extraVolumeMounts: []
   # Command to run after the main command on exit
   exitCommand: ""
-  
+
 ## List of command to run after minio install
 ## NOTE: the mc command TARGET is always "myminio"
 customCommands:
@@ -440,14 +444,15 @@ customCommandJob:
   affinity: {}
   # Command to run after the main command on exit
   exitCommand: ""
-  
+
 ## Use this field to add environment variables relevant to MinIO server. These fields will be passed on to MinIO container(s)
 ## when Chart is deployed
 environment:
   ## Please refer for comprehensive list https://min.io/docs/minio/linux/reference/minio-server/minio-server.html
   ## MINIO_SUBNET_LICENSE: "License key obtained from https://subnet.min.io"
   ## MINIO_BROWSER: "off"
-
+  AWS_ACCESS_KEY_ID: ''
+  AWS_SECRET_ACCESS_KEY: ''
 ## The name of a secret in the same kubernetes namespace which contain secret values
 ## This can be useful for LDAP password, etc
 ## The key in the secret must be 'config.env'
@@ -492,7 +497,7 @@ metrics:
   serviceMonitor:
     enabled: false
     # scrape each node/pod individually for additional metrics
-    includeNode: false 
+    includeNode: false
     public: true
     additionalLabels: {}
     # for node metrics

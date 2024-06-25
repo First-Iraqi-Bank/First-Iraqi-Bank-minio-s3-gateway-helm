@@ -71,8 +71,8 @@ spec:
           command:
             - "/bin/sh"
             - "-ce"
-            {{- if eq .Values.gateway.type "nas" }}
-            - "/usr/bin/docker-entrypoint.sh minio gateway nas {{ $bucketRoot }} -S {{ .Values.certsPath }} --address :{{ .Values.minioAPIPort }} --console-address :{{ .Values.minioConsolePort }} {{- template "minio.extraArgs" . }} "
+            {{- if eq .Values.gateway.type "s3" }}
+            - "/usr/bin/docker-entrypoint.sh minio gateway s3 {{ .Values.s3EndpointURL }} --address :{{ .Values.minioAPIPort }} --console-address :{{ .Values.minioConsolePort }} {{- template "minio.extraArgs" . }} "
             {{- end }}
           volumeMounts:
             - name: minio-user
